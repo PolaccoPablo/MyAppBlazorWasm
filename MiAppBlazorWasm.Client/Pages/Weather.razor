@@ -1,0 +1,391 @@
+﻿@page "/weather"
+@using MiAppBlazorWasm.Client.Services
+@using MiAppBlazorWasm.Shared.Dtos
+@using MiAppBlazorWasm.Shared.Models
+@inject WeatherService WeatherService
+@inject IJSRuntime JSRuntime
+
+
+
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@inject WeatherService WeatherService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Pronóstico del Tiempo</PageTitle>
+
+<h1>Pronóstico del Tiempo</h1>
+
+<p>Esta página demuestra cómo obtener datos de una API .NET desde Blazor WebAssembly usando modelos compartidos.</p>
+
+<div class="row mb-3">
+    <div class="col">
+        <button class="btn btn-primary" @onclick="LoadWeatherData" disabled="@loading">
+            @if (loading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            Cargar Datos
+        </button>
+        <button class="btn btn-success ms-2" @onclick="ShowCreateForm">
+            Agregar Pronóstico
+        </button>
+    </div>
+</div>
+
+@if (showCreateForm)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>@(editingForecast != null ? "Editar" : "Crear") Pronóstico</h5>
+        </div>
+        <div class="card-body">
+            <EditForm Model="currentRequest" OnValidSubmit="SaveForecast">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger" />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha:</label>
+                            <InputDate @bind-Value="currentRequest.Date" class="form-control" />
+                            <ValidationMessage For="@(() => currentRequest.Date)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Temperatura (°C):</label>
+                            <InputNumber @bind-Value="currentRequest.TemperatureC" class="form-control" />
+                            <ValidationMessage For="@(() => currentRequest.TemperatureC)" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Resumen:</label>
+                            <InputText @bind-Value="currentRequest.Summary" class="form-control" />
+                            <ValidationMessage For="@(() => currentRequest.Summary)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Condición:</label>
+                            <InputSelect @bind-Value="currentRequest.ConditionId" class="form-select">
+                                <option value="0">Seleccionar...</option>
+                                @for (int i = 1; i <= 7; i++)
+                                {
+                                    var condition = (WeatherCondition)i;
+                                    <option value="@i">@condition.GetIcon() @condition.GetDescription()</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción (opcional):</label>
+                    <InputTextArea @bind-Value="currentRequest.Description" class="form-control" rows="3" />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success" disabled="@saving">
+                        @if (saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        @(editingForecast != null ? "Actualizar" : "Crear")
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelForm">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (loading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else if (apiResponse?.Success == true && apiResponse.Data != null && apiResponse.Data.Count > 0)
+{
+    <div class="alert alert-success">
+        <strong>✓</strong> @apiResponse.Message
+    </div>
+
+    <div class="row">
+        @foreach (var forecast in apiResponse.Data)
+        {
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="h5 mb-0">@forecast.Date.ToShortDateString()</span>
+                        <span class="fs-1">@forecast.ConditionIcon</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">@forecast.Summary</h6>
+                        <p class="card-text">
+                            <strong>Temperatura:</strong> @forecast.TemperatureC°C (@forecast.TemperatureF°F)<br>
+                            <strong>Condición:</strong> @forecast.ConditionName<br>
+                            @if (!string.IsNullOrEmpty(forecast.Description))
+                            {
+                                <strong>Descripción:</strong> 
+                                @forecast.Description
+                    
+                                <br>
+                            }
+                            <small class="text-muted">Creado: @forecast.CreatedAt.ToShortDateString()</small>
+                        </p>
+                    </div>
+                    <div class="card-footer d-flex gap-2">
+                        <button class="btn btn-sm btn-info" @onclick="() => ShowDetails(forecast)">
+                            Ver Detalles
+                        </button>
+                        <button class="btn btn-sm btn-warning" @onclick="() => EditForecast(forecast)">
+                            Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteForecast(forecast.Id)">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else if (apiResponse?.Success == false)
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @apiResponse.Message
+        @if (apiResponse.Errors.Any())
+        {
+            <ul class="mb-0 mt-2">
+                @foreach (var error in apiResponse.Errors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@if (selectedForecast != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @selectedForecast.ConditionIcon Detalles del Pronóstico
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseDetails"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Fecha:</dt>
+                        <dd class="col-sm-8">@selectedForecast.Date.ToLongDateString()</dd>
+
+                        <dt class="col-sm-4">Temperatura:</dt>
+                        <dd class="col-sm-8">@selectedForecast.TemperatureC°C (@selectedForecast.TemperatureF°F)</dd>
+
+                        <dt class="col-sm-4">Condición:</dt>
+                        <dd class="col-sm-8">@selectedForecast.ConditionIcon @selectedForecast.ConditionName</dd>
+
+                        <dt class="col-sm-4">Resumen:</dt>
+                        <dd class="col-sm-8">@selectedForecast.Summary</dd>
+
+                        @if (!string.IsNullOrEmpty(selectedForecast.Description))
+                        {
+                            <dt class="col-sm-4">Descripción:</dt>
+                            <dd class="col-sm-8">@selectedForecast.Description</dd>
+                        }
+
+                        <dt class="col-sm-4">Creado:</dt>
+                        <dd class="col-sm-8">@selectedForecast.CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDetails">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ApiResponse<List<WeatherForecastResponse>>? apiResponse;
+    private CreateWeatherForecastRequest currentRequest = new();
+    private WeatherForecastResponse? selectedForecast;
+    private WeatherForecastResponse? editingForecast;
+    private bool loading = false;
+    private bool saving = false;
+    private bool showCreateForm = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWeatherData();
+    }
+
+    private async Task LoadWeatherData()
+    {
+        loading = true;
+        StateHasChanged();
+
+        try
+        {
+            apiResponse = await WeatherService.GetWeatherForecastsAsync();
+        }
+        catch (Exception ex)
+        {
+            apiResponse = ApiResponse.ErrorResult<List<WeatherForecastResponse>>(
+                "Error al cargar los datos", new List<string> { ex.Message });
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowCreateForm()
+    {
+        editingForecast = null;
+        currentRequest = new CreateWeatherForecastRequest
+        {
+            Date = DateOnly.FromDateTime(DateTime.Today)
+        };
+        showCreateForm = true;
+    }
+
+    private void EditForecast(WeatherForecastResponse forecast)
+    {
+        editingForecast = forecast;
+        currentRequest = new CreateWeatherForecastRequest
+        {
+            Date = forecast.Date,
+            TemperatureC = forecast.TemperatureC,
+            Summary = forecast.Summary,
+            Description = forecast.Description,
+            ConditionId = GetConditionIdFromName(forecast.ConditionName)
+        };
+        showCreateForm = true;
+    }
+
+    private int GetConditionIdFromName(string conditionName)
+    {
+        // Aquí deberías implementar la lógica para obtener el ID basado en el nombre
+        // Por ahora retorno 1 como valor por defecto
+        for (int i = 1; i <= 7; i++)
+        {
+            var condition = (WeatherCondition)i;
+            if (condition.GetDescription() == conditionName)
+                return i;
+        }
+        return 1;
+    }
+
+    private async Task SaveForecast()
+    {
+        if (currentRequest.ConditionId == 0)
+        {
+            // Agregar validación para condición
+            return;
+        }
+
+        saving = true;
+        StateHasChanged();
+
+        try
+        {
+            ApiResponse<WeatherForecastResponse>? response;
+
+            if (editingForecast != null)
+            {
+                var updateRequest = new UpdateWeatherForecastRequest
+                {
+                    Id = editingForecast.Id,
+                    Date = currentRequest.Date,
+                    TemperatureC = currentRequest.TemperatureC,
+                    Summary = currentRequest.Summary,
+                    Description = currentRequest.Description,
+                    ConditionId = currentRequest.ConditionId
+                };
+                response = await WeatherService.UpdateWeatherForecastAsync(editingForecast.Id, updateRequest);
+            }
+            else
+            {
+                response = await WeatherService.CreateWeatherForecastAsync(currentRequest);
+            }
+
+            if (response?.Success == true)
+            {
+                await LoadWeatherData();
+                CancelForm();
+
+                // Mostrar mensaje de éxito
+                await JSRuntime.InvokeVoidAsync("alert",
+                    editingForecast != null ? "Pronóstico actualizado exitosamente" : "Pronóstico creado exitosamente");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert",
+                    response?.Message ?? "Error al guardar el pronóstico");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelForm()
+    {
+        showCreateForm = false;
+        editingForecast = null;
+        currentRequest = new CreateWeatherForecastRequest();
+    }
+
+    private void ShowDetails(WeatherForecastResponse forecast)
+    {
+        selectedForecast = forecast;
+    }
+
+    private void CloseDetails()
+    {
+        selectedForecast = null;
+    }
+
+    private async Task DeleteForecast(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "¿Estás seguro de que quieres eliminar este pronóstico?"))
+        {
+            try
+            {
+                var response = await WeatherService.DeleteWeatherForecastAsync(id);
+
+                if (response?.Success == true)
+                {
+                    await LoadWeatherData();
+                    await JSRuntime.InvokeVoidAsync("alert", "Pronóstico eliminado exitosamente");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert",
+                        response?.Message ?? "Error al eliminar el pronóstico");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+            }
+        }
+    }
+}

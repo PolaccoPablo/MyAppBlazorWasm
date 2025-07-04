@@ -1,0 +1,6 @@
+@MiAppBlazorWasm.Server_HostAddress = http://localhost:5022
+
+GET {{MiAppBlazorWasm.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,119 @@
+﻿@* @page "/weatheruuu"
+@using MiAppBlazorWasm.Client.Services
+@using MiAppBlazorWasm.Shared.Models
+@inject WeatherService WeatherService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Pronóstico del Tiempo</PageTitle>
+
+<h1>Pronóstico del Tiempo</h1>
+
+<p>Esta página demuestra cómo obtener datos de una API .NET desde Blazor WebAssembly.</p>
+
+<button class="btn btn-primary" @onclick="LoadWeatherData">Cargar Datos</button>
+
+@if (loading)
+{
+    <div class="spinner-border mt-3" role="status">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+}
+else if (forecasts != null && forecasts.Length > 0)
+{
+    <div class="mt-4">
+        <h3>Pronósticos obtenidos de la API:</h3>
+        <table class="table table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Temp. (C)</th>
+                    <th>Temp. (F)</th>
+                    <th>Resumen</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var forecast in forecasts)
+                {
+                    <tr>
+                        <td>@forecast.Date.ToShortDateString()</td>
+                        <td>@forecast.TemperatureC</td>
+                        <td>@forecast.TemperatureF</td>
+                        <td>@forecast.Summary</td>
+                        <td>
+                            <button class="btn btn-sm btn-info"
+                                    @onclick="() => ShowDetails(forecast)">
+                                Ver Detalles
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (error != null)
+{
+    <div class="alert alert-danger mt-3">
+        <strong>Error:</strong> @error
+    </div>
+}
+
+@if (selectedForecast != null)
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>Detalles del Pronóstico</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Fecha:</strong> @selectedForecast.Date.ToLongDateString()</p>
+            <p><strong>Temperatura:</strong> @selectedForecast.TemperatureC°C (@selectedForecast.TemperatureF°F)</p>
+            <p><strong>Resumen:</strong> @selectedForecast.Summary</p>
+        </div>
+    </div>
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+    private WeatherForecast? selectedForecast;
+    private bool loading = false;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWeatherData();
+    }
+
+    private async Task LoadWeatherData()
+    {
+        loading = true;
+        error = null;
+        selectedForecast = null;
+
+        try
+        {
+            forecasts = await WeatherService.GetWeatherForecastsAsync();
+            if (forecasts == null)
+            {
+                error = "No se pudieron cargar los datos del servidor.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error al cargar datos: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ShowDetails(WeatherForecast forecast)
+    {
+        selectedForecast = forecast;
+
+        // Mostrar notificación usando JavaScript
+        await JSRuntime.InvokeVoidAsync("alert",
+            $"Mostrando detalles para {forecast.Date.ToShortDateString()}");
+    }
+} *@
