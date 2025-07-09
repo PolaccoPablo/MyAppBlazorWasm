@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MiAppBlazorWasm.Shared\MiAppBlazorWasm.Shared.csproj" />
+    <ProjectReference Include="..\MiAppBlazorWasm.Shared\MiAppBlazorWasm.Model.csproj" />
   </ItemGroup>
 
 </Project>
