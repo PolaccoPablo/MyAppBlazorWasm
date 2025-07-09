@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Server", "MiAppBlazorWasm.Server\MiAppBlazorWasm.Server.csproj", "{8A819801-0856-42B3-B150-FCD906CC1460}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Api", "MiAppBlazorWasm.Server\MiAppBlazorWasm.Api.csproj", "{8A819801-0856-42B3-B150-FCD906CC1460}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Client", "MiAppBlazorWasm.Client\MiAppBlazorWasm.Client.csproj", "{030F0C96-D152-4164-A611-45E35A32345A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Web.Client", "MiAppBlazorWasm.Client\MiAppBlazorWasm.Web.Client.csproj", "{030F0C96-D152-4164-A611-45E35A32345A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Shared", "MiAppBlazorWasm.Shared\MiAppBlazorWasm.Shared.csproj", "{9A267761-BDE5-4062-AF41-A7F91C6A5D82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiAppBlazorWasm.Model", "MiAppBlazorWasm.Shared\MiAppBlazorWasm.Model.csproj", "{9A267761-BDE5-4062-AF41-A7F91C6A5D82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
