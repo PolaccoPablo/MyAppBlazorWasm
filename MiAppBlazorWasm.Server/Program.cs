@@ -1,3 +1,4 @@
+using MiAppBlazorWasm.Api.Service;
 using MiAppBlazorWasm.Server.Context;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,12 @@ var connectionString = builder.Configuration.GetConnectionString("Connection");
 //fdgistrar servicio opara la conexion a la base de datos
 builder.Services.AddDbContext<MyAppDBcontext>(options =>
     options.UseSqlServer(connectionString));
+
+// Registrar HttpClient y WeatherService
+builder.Services.AddHttpClient<IWeatherService, WeatherService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // Configurar CORS para el cliente Blazor
 builder.Services.AddCors(options =>
