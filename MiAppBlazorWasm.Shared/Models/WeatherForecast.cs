@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MiAppBlazorWasm.Shared.Models;
+namespace MiAppBlazorWasm.Model.Models;
 
 public class WeatherForecast
 {
