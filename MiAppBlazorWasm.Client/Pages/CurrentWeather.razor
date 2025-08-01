@@ -1,0 +1,389 @@
+﻿@page "/current-weather"
+@using MiAppBlazorWasm.Client.Services
+@using MiAppBlazorWasm.Model.Dtos
+@using MiAppBlazorWasm.Model.Models.ApiExterna
+@inject WeatherService WeatherService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Clima Actual</PageTitle>
+
+<h1>🌤️ Consulta Clima Actual</h1>
+
+<p>Busca el clima actual de cualquier ciudad usando datos reales de OpenWeatherMap.</p>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Formulario de búsqueda -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>🔍 Buscar Clima</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Ciudad:</label>
+                        <input @bind="searchCity" @onkeypress="OnKeyPress" 
+                               class="form-control" placeholder="Ej: Buenos Aires" 
+                               maxlength="100" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">País (opcional):</label>
+                        <input @bind="searchCountry" @onkeypress="OnKeyPress" 
+                               class="form-control" placeholder="Ej: AR" 
+                               maxlength="5" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" @onclick="SearchWeather" disabled="@(loading || string.IsNullOrWhiteSpace(searchCity))">
+                            @if (loading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Búsqueda múltiple -->
+                <div class="mt-3">
+                    <h6>🌍 Búsqueda múltiple:</h6>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="SearchArgentinaCities">
+                            Ciudades Argentina
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="SearchEuropeCities">
+                            Ciudades Europa
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" @onclick="SearchUSACities">
+                            Ciudades USA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultados de búsqueda única -->
+        @if (currentWeather != null && !showMultipleResults)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>📍 @currentWeather.Location</h5>
+                    <span class="fs-1">
+                        @if (!string.IsNullOrEmpty(currentWeather.Icon))
+                        {
+                            <img src="@($"https://openweathermap.org/img/wn/{currentWeather.Icon}@2x.png")"
+                                 alt="@currentWeather.Description" style="width: 60px; height: 60px;" />
+                        }
+                        else
+                        {
+                            @* <img>🌤️/> *@
+                        }
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h2 class="text-primary">@currentWeather.Temperature°C</h2>
+                            <p class="text-muted mb-1">Sensación térmica: @currentWeather.FeelsLike°C</p>
+                            <p class="mb-3"><strong>@currentWeather.Description</strong></p>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-6">💧 Humedad:</dt>
+                                <dd class="col-6">@currentWeather.Humidity%</dd>
+                                
+                                <dt class="col-6">💨 Viento:</dt>
+                                <dd class="col-6">@currentWeather.WindSpeed km/h</dd>
+                                
+                                <dt class="col-6">🕒 Actualizado:</dt>
+                                <dd class="col-6">@currentWeather.LastUpdated.ToString("HH:mm")</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-success" @onclick="SaveToFavorites">
+                            ⭐ Agregar a Favoritas
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Resultados de búsqueda múltiple -->
+        @if (multipleWeatherResults != null && showMultipleResults)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>🌍 Resultados Múltiples (@multipleWeatherResults.Count ciudades)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var weather in multipleWeatherResults)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">@weather.Location</h6>
+                                        @if (!string.IsNullOrEmpty(weather.Icon))
+                                        {
+                                            <img src="https://openweathermap.org/img/wn/@(weather.Icon).png" 
+                                                 alt="@weather.Description" style="width: 40px; height: 40px;" />
+                                        }
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="h5 text-primary">@weather.Temperature°C</span>
+                                        <small class="text-muted">@weather.Description</small>
+                                    </div>
+                                    <small class="text-muted">
+                                        💧 @weather.Humidity% | 💨 @weather.WindSpeed km/h
+                                    </small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Manejo de errores -->
+        @if (apiResponse?.Success == false)
+        {
+            <div class="alert alert-danger">
+                <strong>❌ Error:</strong> @apiResponse.Message
+                @if (apiResponse.Errors.Any())
+                {
+                    <ul class="mb-0 mt-2">
+                        @foreach (var error in apiResponse.Errors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+
+        @if (multipleApiResponse?.Success == false)
+        {
+            <div class="alert alert-warning">
+                <strong>⚠️ Advertencia:</strong> @multipleApiResponse.Message
+                @if (multipleApiResponse.Errors.Any())
+                {
+                    <ul class="mb-0 mt-2">
+                        @foreach (var error in multipleApiResponse.Errors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Panel lateral con información -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>ℹ️ Información</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>🌡️ Datos en tiempo real</strong></p>
+                <p>Los datos del clima provienen de OpenWeatherMap API y se actualizan constantemente.</p>
+                
+                <p><strong>🔍 Consejos de búsqueda:</strong></p>
+                <ul class="small">
+                    <li>Usa nombres de ciudades en español o inglés</li>
+                    <li>Agrega el código de país para mayor precisión (ej: "AR" para Argentina)</li>
+                    <li>Prueba con ciudades principales si no encuentras resultados</li>
+                </ul>
+
+                <hr />
+                
+                <p><strong>🚀 Próximas funciones:</strong></p>
+                <ul class="small text-muted">
+                    <li>Guardado en favoritas</li>
+                    <li>Historial de búsquedas</li>
+                    <li>Pronóstico extendido</li>
+                    <li>Alertas meteorológicas</li>
+                </ul>
+            </div>
+        </div>
+
+        @if (searchHistory.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6>📝 Historial de Búsquedas</h6>
+                </div>
+                <div class="card-body">
+                    @foreach (var city in searchHistory.Take(5))
+                    {
+                        <button class="btn btn-outline-secondary btn-sm me-1 mb-1" 
+                                @onclick="() => QuickSearch(city)">
+                            @city
+                        </button>
+                    }
+                    @if (searchHistory.Count > 5)
+                    {
+                        <br />
+                        <small class="text-muted">Y @(searchHistory.Count - 5) más...</small>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string searchCity = "";
+    private string searchCountry = "";
+    private bool loading = false;
+    private bool showMultipleResults = false;
+    
+    private WeatherResponse? currentWeather;
+    private List<WeatherResponse>? multipleWeatherResults;
+    private ApiResponse<WeatherResponse>? apiResponse;
+    private ApiResponse<List<WeatherResponse>>? multipleApiResponse;
+    
+    private List<string> searchHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Buscar una ciudad por defecto al cargar
+        searchCity = "Buenos Aires";
+        searchCountry = "AR";
+        await SearchWeather();
+    }
+
+    private async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchCity))
+        {
+            await SearchWeather();
+        }
+    }
+
+    private async Task SearchWeather()
+    {
+        if (string.IsNullOrWhiteSpace(searchCity))
+            return;
+
+        loading = true;
+        showMultipleResults = false;
+        currentWeather = null;
+        apiResponse = null;
+        StateHasChanged();
+
+        try
+        {
+            apiResponse = await WeatherService.GetCurrentWeatherAsync(searchCity.Trim(), searchCountry?.Trim());
+            
+            if (apiResponse?.Success == true && apiResponse.Data != null)
+            {
+                currentWeather = apiResponse.Data;
+                AddToSearchHistory(searchCity.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            apiResponse = ApiResponse.ErrorResult<WeatherResponse>(
+                "Error al buscar el clima", new List<string> { ex.Message });
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SearchMultipleCities(string[] cities)
+    {
+        loading = true;
+        showMultipleResults = true;
+        currentWeather = null;
+        multipleWeatherResults = null;
+        multipleApiResponse = null;
+        StateHasChanged();
+
+        try
+        {
+            var locations = cities.Select(city => new LocationRequest { City = city }).ToList();
+            multipleApiResponse = await WeatherService.GetMultipleCitiesWeatherAsync(locations);
+            
+            if (multipleApiResponse?.Success == true && multipleApiResponse.Data != null)
+            {
+                multipleWeatherResults = multipleApiResponse.Data;
+                
+                // Agregar ciudades al historial
+                foreach (var city in cities)
+                {
+                    AddToSearchHistory(city);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            multipleApiResponse = ApiResponse.ErrorResult<List<WeatherResponse>>(
+                "Error al buscar múltiples ciudades", new List<string> { ex.Message });
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    // Métodos específicos para cada grupo de ciudades
+    private async Task SearchArgentinaCities()
+    {
+        await SearchMultipleCities(new[] { "Buenos Aires", "Córdoba", "Rosario" });
+    }
+
+    private async Task SearchEuropeCities()
+    {
+        await SearchMultipleCities(new[] { "Paris", "London", "Madrid" });
+    }
+
+    private async Task SearchUSACities()
+    {
+        await SearchMultipleCities(new[] { "New York", "Los Angeles", "Miami" });
+    }
+
+
+
+    private async Task QuickSearch(string city)
+    {
+        searchCity = city;
+        searchCountry = "";
+        await SearchWeather();
+    }
+
+    private void AddToSearchHistory(string city)
+    {
+        if (!searchHistory.Contains(city, StringComparer.OrdinalIgnoreCase))
+        {
+            searchHistory.Insert(0, city);
+            
+            // Mantener solo las últimas 10 búsquedas
+            if (searchHistory.Count > 10)
+            {
+                searchHistory = searchHistory.Take(10).ToList();
+            }
+        }
+        else
+        {
+            // Mover al principio si ya existe
+            searchHistory.Remove(city);
+            searchHistory.Insert(0, city);
+        }
+    }
+
+    private async Task SaveToFavorites()
+    {
+        if (currentWeather != null)
+        {
+            // Por ahora solo mostramos un mensaje, después implementaremos la funcionalidad completa
+            await JSRuntime.InvokeVoidAsync("alert", 
+                $"¡{currentWeather.Location} será agregada a favoritas en una próxima actualización!");
+        }
+    }
+}
