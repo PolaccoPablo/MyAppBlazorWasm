@@ -1,9 +1,9 @@
-﻿using MiAppBlazorWasm.Shared.Models;
+﻿using MiAppBlazorWasm.Model.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MiAppBlazorWasm.Server.Context
 {
-    public class MyAppDBcontext: DbContext
+    public class MyAppDBcontext : DbContext
     {
         public MyAppDBcontext(DbContextOptions<MyAppDBcontext> options) : base(options)
         {
@@ -11,6 +11,6 @@ namespace MiAppBlazorWasm.Server.Context
         // Define DbSets for your entities here
         // public DbSet<YourEntity> YourEntities { get; set; }
         public DbSet<WeatherForecast> WeatherForecasts { get; set; }
-     }
+    }
 
 }

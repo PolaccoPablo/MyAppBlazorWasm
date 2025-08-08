@@ -1,6 +1,6 @@
-﻿using MiAppBlazorWasm.Shared.Models;
+﻿using MiAppBlazorWasm.Model.Dtos;
+using MiAppBlazorWasm.Model.Models;
 using Microsoft.AspNetCore.Mvc;
-using MiAppBlazorWasm.Shared.Dtos;
 
 namespace MiAppBlazorWasm.Server.Controllers;
 

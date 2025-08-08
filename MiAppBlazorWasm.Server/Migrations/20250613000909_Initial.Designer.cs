@@ -25,7 +25,7 @@ namespace MiAppBlazorWasm.Server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MiAppBlazorWasm.Shared.Models.WeatherForecast", b =>
+            modelBuilder.Entity("MiAppBlazorWasm.Model.Models.WeatherForecast", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

@@ -1,4 +1,4 @@
-﻿namespace MiAppBlazorWasm.Shared.Models;
+﻿namespace MiAppBlazorWasm.Model.Models;
 
 public enum WeatherCondition
 { //Esto despues podemos pasarlo a una entidad ID descripcion y icono, para que sea mas facil de mantener y traducir

@@ -1,10 +1,9 @@
-﻿using MiAppBlazorWasm.Shared.Models;
-using MiAppBlazorWasm.Shared.Dtos;
+﻿using MiAppBlazorWasm.Model.Dtos;
 
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace MiAppBlazorWasm.Client.Services;
+namespace MiAppBlazorWasm.Web.Client.Services;
 
 public class WeatherService
 {
