@@ -1,16 +1,32 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
+
+<div class="page" style="min-height: 100vh; display: flex;">
+    <!-- Sidebar forzado visible -->
+    <div class="sidebar" style="width: 250px; background: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%); min-height: 100vh;">
         <NavMenu />
     </div>
 
-    <main>
-        <div class="top-row px-4">
+    <!-- Contenido principal -->
+    <main style="flex: 1; background: white;">
+        <div class="top-row px-4" style="background-color: #f7f7f7; height: 3.5rem; display: flex; align-items: center; justify-content: flex-end;">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
 
-        <article class="content px-4">
+        <article class="content px-4" style="padding: 1rem;">
             @Body
         </article>
     </main>
 </div>
+
+<style>
+    /* Reset básico para asegurar que funcione */
+    * {
+        box-sizing: border-box;
+    }
+
+    body, html {
+        margin: 0;
+        padding: 0;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+</style>

@@ -1,5 +1,5 @@
 ﻿using MiAppBlazorWasm.Model.Dtos;
-
+using MiAppBlazorWasm.Model.Models.ApiExterna;
 using System.Net.Http.Json;
 using System.Text.Json;
 
