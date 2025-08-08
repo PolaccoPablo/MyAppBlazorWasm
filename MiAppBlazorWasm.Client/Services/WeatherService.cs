@@ -19,6 +19,53 @@ public class WeatherService
         };
     }
 
+    // ===== NUEVOS MÉTODOS PARA CLIMA REAL =====
+
+    /// <summary>
+    /// Obtiene el clima actual de una ciudad usando la API externa
+    /// </summary>
+    public async Task<ApiResponse<WeatherResponse>?> GetCurrentWeatherAsync(string city, string? country = null)
+    {
+        try
+        {
+            var url = $"api/weather/current/{Uri.EscapeDataString(city)}";
+            if (!string.IsNullOrEmpty(country))
+                url += $"?country={Uri.EscapeDataString(country)}";
+
+            var response = await _httpClient.GetAsync(url);
+            var jsonString = await response.Content.ReadAsStringAsync();
+
+            return JsonSerializer.Deserialize<ApiResponse<WeatherResponse>>(jsonString, _jsonOptions);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener clima para {city}: {ex.Message}");
+            return ApiResponse.ErrorResult<WeatherResponse>(
+                "Error de conexión", new List<string> { ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Obtiene el clima de múltiples ciudades
+    /// </summary>
+    public async Task<ApiResponse<List<WeatherResponse>>?> GetMultipleCitiesWeatherAsync(List<LocationRequest> locations)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/weather/current/batch", locations);
+            var jsonString = await response.Content.ReadAsStringAsync();
+
+            return JsonSerializer.Deserialize<ApiResponse<List<WeatherResponse>>>(jsonString, _jsonOptions);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener clima múltiple: {ex.Message}");
+            return ApiResponse.ErrorResult<List<WeatherResponse>>(
+                "Error de conexión", new List<string> { ex.Message });
+        }
+    }
+
+    // ===== MÉTODOS EXISTENTES PARA CRUD DE PRONÓSTICOS =====
 
     public async Task<ApiResponse<List<WeatherForecastResponse>>?> GetWeatherForecastsAsync()
     {
@@ -44,7 +91,6 @@ public class WeatherService
                 "Error de conexión", new List<string> { ex.Message });
         }
     }
-
 
     public async Task<ApiResponse<WeatherForecastResponse>?> GetWeatherForecastAsync(int id)
     {
@@ -115,6 +161,3 @@ public class WeatherService
         }
     }
 }
-
-
-

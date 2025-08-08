@@ -1,5 +1,7 @@
-﻿using MiAppBlazorWasm.Model.Dtos;
+﻿using MiAppBlazorWasm.Api.Service;
+using MiAppBlazorWasm.Model.Dtos;
 using MiAppBlazorWasm.Model.Models;
+using MiAppBlazorWasm.Model.Models.ApiExterna;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MiAppBlazorWasm.Server.Controllers;
@@ -8,6 +10,8 @@ namespace MiAppBlazorWasm.Server.Controllers;
 [Route("api/[controller]")]
 public class WeatherController : ControllerBase
 {
+    private readonly IWeatherService _weatherService;
+
     private static readonly string[] Summaries = new[]
     {
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
@@ -16,23 +20,101 @@ public class WeatherController : ControllerBase
     private static readonly List<WeatherForecast> _forecasts = new();
     private static int _nextId = 1;
 
-    static WeatherController()
+    public WeatherController(IWeatherService weatherService)
     {
-        // Inicializar con datos de ejemplo ACA TENEMOS QUE LLAMAR A LA API DEL TIEMPO PARA RECIBIR LOS DATOS REALES
-        for (int i = 1; i <= 5; i++)
+        _weatherService = weatherService;
+
+        // Inicializar datos de ejemplo solo si no hay datos
+        if (_forecasts.Count == 0)
         {
-            _forecasts.Add(new WeatherForecast
+            for (int i = 1; i <= 5; i++)
             {
-                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(i)),
-                TemperatureC = Random.Shared.Next(-20, 55),
-                Summary = Summaries[Random.Shared.Next(Summaries.Length)],
-                Condition = (WeatherCondition)Random.Shared.Next(1, 8),
-                Description = $"Pronóstico para el día {i}"
-            });
+                _forecasts.Add(new WeatherForecast
+                {
+                    Date = DateOnly.FromDateTime(DateTime.Now.AddDays(i)),
+                    TemperatureC = Random.Shared.Next(-20, 55),
+                    Summary = Summaries[Random.Shared.Next(Summaries.Length)],
+                    Condition = (WeatherCondition)Random.Shared.Next(1, 8),
+                    Description = $"Pronóstico para el día {i}"
+                });
+            }
+            _nextId = 6;
         }
-        _nextId = 6;
     }
 
+    // NUEVO ENDPOINT: Buscar clima por ciudad (API REAL)
+    [HttpGet("current/{city}")]
+    public async Task<ActionResult<ApiResponse<WeatherResponse>>> GetCurrentWeatherAsync(string city, [FromQuery] string? country = null)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(city))
+                return BadRequest(ApiResponse.ErrorResult<WeatherResponse>("El nombre de la ciudad es requerido"));
+
+            var locationRequest = new LocationRequest
+            {
+                City = city.Trim(),
+                Country = country?.Trim()
+            };
+
+            var weatherData = await _weatherService.GetWeatherAsync(locationRequest);
+
+            return Ok(ApiResponse.SuccessResult(weatherData, "Datos del clima obtenidos exitosamente"));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse.ErrorResult<WeatherResponse>(
+                "Error al obtener datos del clima", new List<string> { ex.Message }));
+        }
+    }
+
+    // NUEVO ENDPOINT: Buscar múltiples ciudades
+    [HttpPost("current/batch")]
+    public async Task<ActionResult<ApiResponse<List<WeatherResponse>>>> GetMultipleCitiesWeatherAsync([FromBody] List<LocationRequest> locations)
+    {
+        try
+        {
+            if (locations == null || !locations.Any())
+                return BadRequest(ApiResponse.ErrorResult<List<WeatherResponse>>("Se requiere al menos una ubicación"));
+
+            var weatherResults = new List<WeatherResponse>();
+            var errors = new List<string>();
+
+            foreach (var location in locations)
+            {
+                try
+                {
+                    var weatherData = await _weatherService.GetWeatherAsync(location);
+                    weatherResults.Add(weatherData);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Error para {location.City}: {ex.Message}");
+                }
+            }
+
+            if (weatherResults.Any())
+            {
+                var message = errors.Any()
+                    ? $"Se obtuvieron {weatherResults.Count} de {locations.Count} ubicaciones. Algunos errores ocurrieron."
+                    : "Todos los datos del clima obtenidos exitosamente";
+
+                return Ok(ApiResponse.SuccessResult(weatherResults, message));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse.ErrorResult<List<WeatherResponse>>(
+                    "No se pudieron obtener datos para ninguna ubicación", errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse.ErrorResult<List<WeatherResponse>>(
+                "Error interno del servidor", new List<string> { ex.Message }));
+        }
+    }
+
+    // ENDPOINTS EXISTENTES PARA CRUD DE PRONÓSTICOS LOCALES
     [HttpGet]
     public ActionResult<ApiResponse<List<WeatherForecastResponse>>> Get()
     {
@@ -173,8 +255,3 @@ public class WeatherController : ControllerBase
         return Ok(ApiResponse.SuccessResult(true, "Pronóstico eliminado exitosamente"));
     }
 }
-
-
-
-
-
